@@ -48,7 +48,7 @@ rec {
 
   # Fil-C: Memory-safe C/C++ compiler
   filc = {
-    config = "x86_64-unknown-linux-filc";
+    config = "x86_64-unknown-linux-gnufilc";
   };
 
   remarkable1 = {
