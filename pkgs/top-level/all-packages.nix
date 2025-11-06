@@ -8316,8 +8316,12 @@ with pkgs;
       targetPackages.relibc or relibc
     else if name == "llvm" then
       targetPackages.llvmPackages_20.libc or llvmPackages_20.libc
+    else if name == "gnufilc" then
+      targetPackages.gnufilc or gnufilc
     else
       throw "Unknown libc ${name}";
+
+  gnufilc = throw "gnufilc must be provided through overlay";
 
   libcCross =
     if stdenv.targetPlatform == stdenv.buildPlatform then
