@@ -380,7 +380,7 @@ rec {
         muslabi64
       ];
     isFilc = {
-      abi = abis.gnufilc;
+      abi = abis.gnufilc0;
     };
     isUClibc =
       with abis;
