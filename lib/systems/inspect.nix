@@ -379,6 +379,9 @@ rec {
         muslabin32
         muslabi64
       ];
+    isFilc = {
+      abi = abis.gnufilc0;
+    };
     isUClibc =
       with abis;
       map (a: { abi = a; }) [
@@ -476,6 +479,9 @@ rec {
   platformPatterns = mapAttrs (_: p: { parsed = { }; } // p) {
     isStatic = {
       isStatic = true;
+    };
+    isMemorySafe = {
+      isMemorySafe = true;
     };
   };
 }

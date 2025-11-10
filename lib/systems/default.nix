@@ -114,6 +114,8 @@ let
             null
           else if final.isRedox then
             "relibc"
+          else if final.isFilc then
+            "gnufilc0"
           else if final.isMusl then
             "musl"
           else if final.isUClibc then
@@ -236,6 +238,7 @@ let
             || isMinGW
             || isWindows # Windows
             || isWasm # WASM
+            || isFilc # Fil-C
           )
           && !isStatic;
 
@@ -246,6 +249,8 @@ let
         # `pkgsStatic` sets `isStatic=true`, so `pkgsStatic.hostPlatform` always
         # has the `staticMarker`.
         isStatic = final.isWasi || final.isRedox;
+
+        isMemorySafe = final.isFilc;
 
         # Just a guess, based on `system`
         inherit

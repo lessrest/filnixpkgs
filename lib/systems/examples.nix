@@ -46,6 +46,11 @@ rec {
   }
   // platforms.bluefield2;
 
+  # Fil-C: Memory-safe C/C++ compiler
+  filc0 = {
+    config = "x86_64-unknown-linux-gnufilc0";
+  };
+
   remarkable1 = {
     config = "armv7l-unknown-linux-gnueabihf";
   }

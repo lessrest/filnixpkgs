@@ -27,6 +27,7 @@
   nixSupport ? { },
   isGNU ? false,
   isClang ? cc.isClang or false,
+  isFilc ? cc.isFilc or false,
   isZig ? cc.isZig or false,
   isArocc ? cc.isArocc or false,
   isCcache ? cc.isCcache or false,
@@ -37,9 +38,9 @@
   # Whether or not to add `-B` and `-L` to `nix-support/cc-{c,ld}flags`
   useCcForLibs ?
 
-    # Always add these flags for Clang, because in order to compile (most
+    # Always add these flags for Clang and Fil-C, because in order to compile (most
     # software) it needs libraries that are shipped and compiled with gcc.
-    if isClang then
+    if isClang || isFilc then
       true
 
     # Never add these flags for a build!=host cross-compiler or a host!=target
@@ -201,7 +202,7 @@ let
         znver5 = versionAtLeast ccVersion "14.0";
       }
       .${arch} or true
-    else if isClang then
+    else if isClang || isFilc then
       {
         #Generic
         x86-64-v2 = versionAtLeast ccVersion "12.0";
@@ -247,7 +248,7 @@ let
             "cortex-a72.cortex-a53" = true;
           }
           .${tune} or false
-        else if isClang then
+        else if isClang || isFilc then
           {
             cortex-a53 = versionAtLeast ccVersion "3.9"; # llvm dfc5d1
           }
@@ -274,7 +275,7 @@ let
     tune:
     let
       guess =
-        if isClang then
+        if isClang || isFilc then
           {
             # clang does not tune for big.LITTLE chips
             "cortex-a72.cortex-a53" = "cortex-a72";
@@ -318,7 +319,8 @@ let
     ++ optional (targetPlatform ? gcc.thumb) "-m${thumb}"
     ++ optional (tune != null) "-mtune=${tune}";
 
-  defaultHardeningFlags = bintools.defaultHardeningFlags or [ ];
+  # Fil-C provides complete memory safety, so traditional hardening is redundant
+  defaultHardeningFlags = if isFilc then [ ] else (bintools.defaultHardeningFlags or [ ]);
 
   # if cc.hardeningUnsupportedFlagsByTargetPlatform exists, this is
   # called with the targetPlatform as an argument and
@@ -382,6 +384,7 @@ stdenvNoCC.mkDerivation {
       nativePrefix
       isGNU
       isClang
+      isFilc
       isZig
       ;
 
@@ -425,7 +428,7 @@ stdenvNoCC.mkDerivation {
       local dst="$1"
       local wrapper="$2"
       export prog="$3"
-      export use_response_file_by_default=${if isClang && !isCcache then "1" else "0"}
+      export use_response_file_by_default=${if (isClang || isFilc) && !isCcache then "1" else "0"}
       substituteAll "$wrapper" "$out/bin/$dst"
       chmod +x "$out/bin/$dst"
     }
@@ -471,6 +474,11 @@ stdenvNoCC.mkDerivation {
       ln -s ${targetPrefix}clang $out/bin/${targetPrefix}cc
       export named_cc=${targetPrefix}clang
       export named_cxx=${targetPrefix}clang++
+    elif [ -e $ccPath/filcc ]; then
+      wrap ${targetPrefix}filcc $wrapper $ccPath/filcc
+      ln -s ${targetPrefix}filcc $out/bin/${targetPrefix}cc
+      export named_cc=${targetPrefix}filcc
+      export named_cxx=${targetPrefix}filc++
     elif [ -e $ccPath/arocc ]; then
       wrap ${targetPrefix}arocc $wrapper $ccPath/arocc
       ln -s ${targetPrefix}arocc $out/bin/${targetPrefix}cc
@@ -483,6 +491,9 @@ stdenvNoCC.mkDerivation {
     elif [ -e $ccPath/clang++ ]; then
       wrap ${targetPrefix}clang++ $wrapper $ccPath/clang++
       ln -s ${targetPrefix}clang++ $out/bin/${targetPrefix}c++
+    elif [ -e $ccPath/filc++ ]; then
+      wrap ${targetPrefix}filc++ $wrapper $ccPath/filc++
+      ln -s ${targetPrefix}filc++ $out/bin/${targetPrefix}c++
     fi
 
     if [ -e $ccPath/${targetPrefix}cpp ]; then
@@ -578,7 +589,7 @@ stdenvNoCC.mkDerivation {
     ##
     ## GCC libs for non-GCC support
     ##
-    + optionalString (useGccForLibs && isClang) ''
+    + optionalString (useGccForLibs && (isClang || isFilc)) ''
 
       echo "-B${gccForLibs}/lib/gcc/${targetPlatform.config}/${gccForLibs.version}" >> $out/nix-support/cc-cflags
     ''
@@ -597,7 +608,7 @@ stdenvNoCC.mkDerivation {
     +
       optionalString
         (
-          isClang
+          (isClang || isFilc)
           && targetPlatform.isLinux
           && !(targetPlatform.useAndroidPrebuilt or false)
           && !(targetPlatform.useLLVM or false)
@@ -690,14 +701,17 @@ stdenvNoCC.mkDerivation {
     # already knows how to find its own libstdc++, and adding
     # additional -isystem flags will confuse gfortran (see
     # https://github.com/NixOS/nixpkgs/pull/209870#issuecomment-1500550903)
-    + optionalString (libcxx == null && isClang && (useGccForLibs && gccForLibs.langCC or false)) ''
-      for dir in ${gccForLibs}/include/c++/*; do
-        echo "-isystem $dir" >> $out/nix-support/libcxx-cxxflags
-      done
-      for dir in ${gccForLibs}/include/c++/*/${targetPlatform.config}; do
-        echo "-isystem $dir" >> $out/nix-support/libcxx-cxxflags
-      done
-    ''
+    +
+      optionalString
+        (libcxx == null && (isClang || isFilc) && (useGccForLibs && gccForLibs.langCC or false))
+        ''
+          for dir in ${gccForLibs}/include/c++/*; do
+            echo "-isystem $dir" >> $out/nix-support/libcxx-cxxflags
+          done
+          for dir in ${gccForLibs}/include/c++/*/${targetPlatform.config}; do
+            echo "-isystem $dir" >> $out/nix-support/libcxx-cxxflags
+          done
+        ''
     + optionalString (libcxx.isLLVM or false) ''
       echo "-isystem ${getDev libcxx}/include/c++/v1" >> $out/nix-support/libcxx-cxxflags
       echo "-stdlib=libc++" >> $out/nix-support/libcxx-ldflags
@@ -750,7 +764,7 @@ stdenvNoCC.mkDerivation {
     +
       optionalString
         (
-          (cc.isClang or false)
+          (cc.isClang or false || cc.isFilc or false)
           && !(cc.isROCm or false)
           && !targetPlatform.isDarwin
           && !targetPlatform.isAndroid
@@ -777,8 +791,8 @@ stdenvNoCC.mkDerivation {
       export hardening_unsupported_flags="${concatStringsSep " " ccHardeningUnsupportedFlags}"
     ''
 
-    # For clang, this is handled in add-clang-cc-cflags-before.sh
-    + lib.optionalString (!isClang && machineFlags != [ ]) ''
+    # For clang and filc, this is handled in add-clang-cc-cflags-before.sh
+    + lib.optionalString (!isClang && !isFilc && machineFlags != [ ]) ''
       printf "%s\n" ${lib.escapeShellArgs machineFlags} >> $out/nix-support/cc-cflags-before
     ''
 
@@ -845,10 +859,10 @@ stdenvNoCC.mkDerivation {
     ''
 
     ##
-    ## General Clang support
+    ## General Clang and Fil-C support
     ## Needs to go after ^ because the for loop eats \n and makes this file an invalid script
     ##
-    + optionalString isClang ''
+    + optionalString (isClang || isFilc) ''
       # Escape twice: once for this script, once for the one it gets substituted into.
       export machineFlags=${escapeShellArg (escapeShellArgs machineFlags)}
       export defaultTarget=${targetPlatform.config}
@@ -864,7 +878,7 @@ stdenvNoCC.mkDerivation {
     );
 
   env = {
-    inherit isClang;
+    inherit isClang isFilc;
 
     # for substitution in utils.bash
     # TODO(@sternenseemann): invent something cleaner than passing in "" in case of absence

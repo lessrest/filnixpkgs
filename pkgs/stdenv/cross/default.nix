@@ -78,6 +78,7 @@ lib.init bootStages
                     "musl"
                     "wasilibc"
                     "relibc"
+                    "gnufilc0"
                   ]
                   || p.isiOS
                   || p.isGenode;
