@@ -480,5 +480,8 @@ rec {
     isStatic = {
       isStatic = true;
     };
+    isMemorySafe = {
+      isMemorySafe = true;
+    };
   };
 }

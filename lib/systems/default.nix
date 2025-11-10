@@ -250,6 +250,8 @@ let
         # has the `staticMarker`.
         isStatic = final.isWasi || final.isRedox;
 
+        isMemorySafe = final.isFilc;
+
         # Just a guess, based on `system`
         inherit
           (

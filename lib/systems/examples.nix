@@ -47,7 +47,7 @@ rec {
   // platforms.bluefield2;
 
   # Fil-C: Memory-safe C/C++ compiler
-  filc = {
+  filc0 = {
     config = "x86_64-unknown-linux-gnufilc0";
   };
 
