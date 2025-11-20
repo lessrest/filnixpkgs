@@ -36,6 +36,10 @@ stdenv.mkDerivation {
     runHook postUnpack
   '';
 
+  patches = lib.optionals (lib.hasInfix "gnufilc" stdenv.hostPlatform.config) [
+    ./recognize-filc-abi.patch
+  ];
+
   # If this isn't set, `pkgs.gnu-config.overrideAttrs( _: { patches
   # = ...; })` will behave very counterintuitively: the (unpatched)
   # gnu-config from the updateAutotoolsGnuConfigScriptsHook stdenv's
