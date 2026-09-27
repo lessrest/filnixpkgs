@@ -59,6 +59,9 @@ rec {
   filc = {
     config = "x86_64-unknown-linux-gnufilc0";
   };
+  aarch64-filc = {
+    config = "aarch64-unknown-linux-gnufilc0";
+  };
 
   remarkable1 = {
     config = "armv7l-unknown-linux-gnueabihf";

@@ -732,9 +732,9 @@ rec {
     gnufilc0 = {
       assertions = [
         {
-          assertion = platform: platform.isLinux && platform.isx86_64;
+          assertion = platform: platform.isLinux && (platform.isx86_64 || platform.isAarch64);
           message = ''
-            Fil-C currently only supports x86_64-linux.
+            Fil-C currently only supports x86_64-linux and aarch64-linux.
           '';
         }
       ];
